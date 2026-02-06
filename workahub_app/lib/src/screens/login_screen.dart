@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:workahub_app/src/rust/api/auth.dart';
+import 'package:workahub_app/src/screens/dashboard_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -9,145 +11,111 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final TextEditingController _emailController = TextEditingController();
-  final TextEditingController _passwordController = TextEditingController();
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  final _orgController = TextEditingController();
   
   bool _isLoading = false;
   String? _error;
-  
-  // State machine for login flow
-  // 0: Email
-  // 1: Org Selection
-  // 2: Password
-  int _step = 0;
-  
   List<String> _organizations = [];
-  String? _selectedOrg;
+  bool _orgSelected = false;
 
-  Future<void> _handleNext() async {
-    setState(() {
-      _isLoading = true;
-      _error = null;
-    });
-
+  Future<void> _checkEmail() async {
+    setState(() { _isLoading = true; _error = null; });
     try {
-      if (_step == 0) {
-        // Fetch Orgs
-        final email = _emailController.text;
-        if (email.isEmpty) {
-            throw Exception("Email required");
-        }
-        final orgs = await requireOrganization(email: email);
-        setState(() {
-          _organizations = orgs;
-          if (_organizations.isNotEmpty) {
-              _selectedOrg = _organizations[0];
-              _step = 1;
-              if (_organizations.length == 1) {
-                  // Skip selection if only one
-                  _handleOrgSelect();
-              }
-          } else {
-              _error = "No organizations found";
-          }
-        });
-      } else if (_step == 1) {
-        // Org Selected, move to password
-        _handleOrgSelect();
-      } else if (_step == 2) {
-          // Login
-          final user = await login(
-              username: _emailController.text, 
-              password: _passwordController.text, 
-              org: _selectedOrg!
-          );
-          if (mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text("Welcome ${user.username}!"))
-              );
-              // Navigate to dashboard (TODO)
-          }
-      }
-    } catch (e) {
+      final orgs = await requireOrganization(email: _emailController.text);
       setState(() {
-        _error = e.toString();
+        _organizations = orgs;
+        if (orgs.isNotEmpty) _orgController.text = orgs[0]; // Default to first
       });
+    } catch (e) {
+      setState(() => _error = "Failed to fetch orgs: $e");
     } finally {
-      if (mounted) {
-          setState(() {
-            _isLoading = false;
-          });
-      }
+      setState(() => _isLoading = false);
     }
   }
 
-  void _handleOrgSelect() {
-      // Move to password
-      setState(() {
-          _step = 2;
-      });
+  Future<void> _login() async {
+    setState(() { _isLoading = true; _error = null; });
+    try {
+      final response = await login(
+        username: _emailController.text, 
+        password: _passwordController.text, 
+        org: _orgController.text
+      );
+      
+      // Save Session
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('user_id', response.userId);
+      await prefs.setString('username', response.username);
+      await prefs.setString('org', _orgController.text);
+
+      if (mounted) {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => const DashboardScreen())
+        );
+      }
+    } catch (e) {
+      setState(() => _error = "Login failed: $e");
+    } finally {
+      setState(() => _isLoading = false);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 400),
-          child: Card(
-            child: Padding(
-              padding: const EdgeInsets.all(32.0),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Text("Workahub", style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 32),
-                  
-                  if (_step == 0)
-                    TextField(
-                      controller: _emailController,
-                      decoration: const InputDecoration(labelText: "Email", border: OutlineInputBorder()),
-                    ),
-                    
-                  if (_step == 1 && _organizations.length > 1)
-                     DropdownButtonFormField<String>(
-                         value: _selectedOrg,
-                         items: _organizations.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
-                         onChanged: (v) => setState(() => _selectedOrg = v),
-                         decoration: const InputDecoration(labelText: "Organization", border: OutlineInputBorder()),
+        child: Card(
+          margin: const EdgeInsets.all(32),
+          child: Container(
+            constraints: const BoxConstraints(maxWidth: 400),
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text("Workahub Login", style: Theme.of(context).textTheme.headlineMedium),
+                const SizedBox(height: 20),
+                if (_error != null)
+                  Text(_error!, style: const TextStyle(color: Colors.red)),
+                
+                TextField(
+                  controller: _emailController,
+                  decoration: const InputDecoration(labelText: "Email"),
+                  onEditingComplete: _organizations.isEmpty ? _checkEmail : null,
+                ),
+                
+                if (_organizations.isNotEmpty) ...[
+                   DropdownButtonFormField<String>(
+                     value: _orgController.text.isNotEmpty ? _orgController.text : null,
+                     items: _organizations.map((o) => DropdownMenuItem(value: o, child: Text(o))).toList(),
+                     onChanged: (val) => setState(() => _orgController.text = val!),
+                     decoration: const InputDecoration(labelText: "Organization"),
+                   ),
+                   TextField(
+                     controller: _passwordController,
+                     decoration: const InputDecoration(labelText: "Password"),
+                     obscureText: true,
+                   ),
+                   const SizedBox(height: 20),
+                   SizedBox(
+                     width: double.infinity,
+                     child: ElevatedButton(
+                       onPressed: _isLoading ? null : _login,
+                       child: _isLoading ? const CircularProgressIndicator() : const Text("Login"),
                      ),
-
-                  if (_step == 2)
-                    TextField(
-                      controller: _passwordController,
-                      obscureText: true,
-                      decoration: const InputDecoration(labelText: "Password", border: OutlineInputBorder()),
-                    ),
-                    
-                  const SizedBox(height: 16),
-                  
-                  if (_error != null)
-                    Text(_error!, style: const TextStyle(color: Colors.red)),
-                    
-                  const SizedBox(height: 16),
-                  
-                  SizedBox(
-                      width: double.infinity,
-                      child: FilledButton(
-                          onPressed: _isLoading ? null : _handleNext,
-                          child: _isLoading 
-                            ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)) 
-                            : Text(_step == 2 ? "Login" : "Next"),
-                      ),
-                  ),
-                  
-                  if (_step > 0)
-                      TextButton(
-                          onPressed: () => setState(() => _step = 0), 
-                          child: const Text("Back")
-                      )
-                ],
-              ),
+                   ),
+                ] else ...[
+                   const SizedBox(height: 20),
+                   SizedBox(
+                     width: double.infinity,
+                     child: ElevatedButton(
+                       onPressed: _isLoading ? null : _checkEmail,
+                       child: _isLoading ? const CircularProgressIndicator() : const Text("Next"),
+                     ),
+                   ),
+                ]
+              ],
             ),
           ),
         ),

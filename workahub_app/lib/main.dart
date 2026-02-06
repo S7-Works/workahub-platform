@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:workahub_app/src/rust/frb_generated.dart';
 import 'package:workahub_app/src/rust/api/db.dart';
 import 'package:workahub_app/src/rust/api/media.dart';
@@ -18,25 +19,29 @@ Future<void> main() async {
 
   // Initialize DB
   try {
-    final dbMsg = await initDb();
-    print(dbMsg);
+    await initDb();
   } catch (e) {
     print("DB Init Error: $e");
   }
 
   // Initialize GStreamer
   try {
-    final gstMsg = await initGstreamer();
-    print(gstMsg);
+    await initGstreamer();
   } catch (e) {
     print("GStreamer Init Error: $e");
   }
 
-  runApp(const MyApp());
+  // Check Session
+  final prefs = await SharedPreferences.getInstance();
+  final isLoggedIn = prefs.getString('user_id') != null;
+
+  runApp(MyApp(isLoggedIn: isLoggedIn));
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  final bool isLoggedIn;
+  
+  const MyApp({super.key, required this.isLoggedIn});
 
   @override
   Widget build(BuildContext context) {
@@ -46,7 +51,7 @@ class MyApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
       ),
-      home: const DashboardScreen(),
+      home: isLoggedIn ? const DashboardScreen() : const LoginScreen(),
     );
   }
 }
