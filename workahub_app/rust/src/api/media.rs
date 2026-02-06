@@ -33,8 +33,10 @@ enum EncoderQuality {
     HardwareAV1,
     HardwareHEVC,
     HardwareH264,
+    SoftwareVP9,
+    SoftwareVP8,
     SoftwareH264,
-    SoftwareFallback, // MJPEG or VP8 as last resort
+    SoftwareFallback, // MJPEG
 }
 
 impl EncoderQuality {
@@ -43,8 +45,10 @@ impl EncoderQuality {
         // Linux/Windows would utilize vaapi/nvcodec in a full cross-platform impl
         match self {
             EncoderQuality::HardwareAV1 => "vtenc_av1", // M3+ chips
-            EncoderQuality::HardwareHEVC => "vtenc_h264_hw", // Using H264 HW as generic high perf placeholder if HEVC fails
+            EncoderQuality::HardwareHEVC => "vtenc_hevc", 
             EncoderQuality::HardwareH264 => "vtenc_h264",
+            EncoderQuality::SoftwareVP9 => "vp9enc",
+            EncoderQuality::SoftwareVP8 => "vp8enc",
             EncoderQuality::SoftwareH264 => "x264enc",
             EncoderQuality::SoftwareFallback => "jpegenc",
         }
@@ -75,13 +79,22 @@ fn find_best_encoder() -> EncoderQuality {
     
     // Attempt HEVC (Common on modern macs)
     if ElementFactory::find("vtenc_hevc").is_some() {
-        // Using correct element name for HEVC if available
         return EncoderQuality::HardwareHEVC; 
     }
 
     // Attempt H264 HW
     if ElementFactory::find("vtenc_h264").is_some() {
         return EncoderQuality::HardwareH264;
+    }
+
+    // Attempt VP9 (High quality open standard)
+    if ElementFactory::find("vp9enc").is_some() {
+        return EncoderQuality::SoftwareVP9;
+    }
+
+    // Attempt VP8 (Widely compatible open standard)
+    if ElementFactory::find("vp8enc").is_some() {
+        return EncoderQuality::SoftwareVP8;
     }
 
     // Fallback to x264
