@@ -1673,6 +1673,35 @@ dependencies = [
 ]
 
 [[package]]
+name = "gstreamer-gl"
+version = "0.24.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ecab1fd39f7073c39a2342137612e89876913736e9397c5de8ecf5b74f3f819e"
+dependencies = [
+ "glib",
+ "gstreamer",
+ "gstreamer-base",
+ "gstreamer-gl-sys",
+ "gstreamer-video",
+ "libc",
+]
+
+[[package]]
+name = "gstreamer-gl-sys"
+version = "0.24.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8ad017800355f1f595a7645cacd43a36bc6a06dd9c6235485fd4c63f0dbd95c8"
+dependencies = [
+ "glib-sys",
+ "gobject-sys",
+ "gstreamer-base-sys",
+ "gstreamer-sys",
+ "gstreamer-video-sys",
+ "libc",
+ "system-deps",
+]
+
+[[package]]
 name = "gstreamer-sys"
 version = "0.24.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3010,6 +3039,7 @@ dependencies = [
  "flutter_rust_bridge",
  "gstreamer",
  "gstreamer-app",
+ "gstreamer-gl",
  "gstreamer-video",
  "image",
  "lazy_static",

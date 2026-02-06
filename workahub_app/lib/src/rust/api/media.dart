@@ -6,7 +6,7 @@
 import '../frb_generated.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
-// These functions are ignored because they are not marked as `pub`: `find_best_encoder`, `new`, `to_gst_element_name`
+// These functions are ignored because they are not marked as `pub`: `find_best_encoder`, `get_platform_zero_copy_caps`, `new`, `to_gst_element_name`
 // These types are ignored because they are neither used by any `pub` functions nor (for structs and enums) marked `#[frb(unignore)]`: `EncoderQuality`, `PIPELINE_MANAGER`, `PipelineManager`
 // These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `clone`, `deref`, `eq`, `fmt`, `initialize`
 
@@ -20,6 +20,21 @@ Future<String> startScreenRecording({
   id: id,
   sinkPath: sinkPath,
 );
+
+Future<String> generateVideoThumbnail({
+  required String videoPath,
+  required String outputPath,
+  required PlatformInt64 positionMs,
+}) => RustLib.instance.api.crateApiMediaGenerateVideoThumbnail(
+  videoPath: videoPath,
+  outputPath: outputPath,
+  positionMs: positionMs,
+);
+
+Future<Uint8List> captureLiveSnapshot({required String pipelineId}) => RustLib
+    .instance
+    .api
+    .crateApiMediaCaptureLiveSnapshot(pipelineId: pipelineId);
 
 Future<String> stopPipeline({required String id}) =>
     RustLib.instance.api.crateApiMediaStopPipeline(id: id);
