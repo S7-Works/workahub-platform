@@ -39,6 +39,11 @@ dependencies:
   system_tray: ^2.0.3
   window_manager: ^0.5.1
   shared_preferences: ^2.5.4
+  fl_chart: ^1.1.1
+  flat_buffers: ^25.9.23
+  google_fonts: ^8.0.1
+  uuid: ^3.0.7
+  path_provider: ^2.1.5
 
 dev_dependencies:
   flutter_test:
