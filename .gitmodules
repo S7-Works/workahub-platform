@@ -1,0 +1,12 @@
+[submodule "marketing"]
+	path = marketing
+	url = https://github.com/S7-Works/workahub_website
+[submodule "ui-components"]
+	path = ui-components
+	url = https://github.com/S7-Works/Tailwind-workahub
+[submodule "backend"]
+	path = backend
+	url = https://github.com/S7-Works/Workahub_Backend_Reloaded
+[submodule "app-windows"]
+	path = app-windows
+	url = https://github.com/S7-Works/workahub-go-app-windows
