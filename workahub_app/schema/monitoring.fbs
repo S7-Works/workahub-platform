@@ -1,0 +1,21 @@
+namespace Workahub.Monitoring;
+
+table InputStats {
+  mouse_clicks:ulong;
+  key_presses:ulong;
+  mouse_moves:ulong;
+}
+
+table SystemStats {
+  cpu_usage:float;
+  memory_used:ulong;
+  memory_total:ulong;
+}
+
+table MonitoringPacket {
+  input:InputStats;
+  system:SystemStats;
+  timestamp:long;
+}
+
+root_type MonitoringPacket;

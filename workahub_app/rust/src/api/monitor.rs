@@ -6,6 +6,11 @@ use sysinfo::System;
 use rdev::{listen, Event, EventType};
 use image::ImageFormat;
 use std::io::Cursor;
+use flatbuffers::FlatBufferBuilder;
+use crate::schema::monitoring_generated::workahub::monitoring::{
+    InputStatsArgs, SystemStatsArgs, MonitoringPacket, MonitoringPacketArgs,
+    InputStats as FbsInputStats, SystemStats as FbsSystemStats
+};
 
 // Global state for monitoring
 lazy_static::lazy_static! {
@@ -47,28 +52,7 @@ pub fn get_and_reset_input_stats() -> InputStats {
     current
 }
 
-// Capture Screenshots
-pub fn capture_screens() -> Vec<Vec<u8>> {
-    let screens = Screen::all().unwrap_or_default();
-    let mut images = Vec::new();
-
-    for screen in screens {
-        match screen.capture() {
-            Ok(image) => {
-                // image is ImageBuffer<Rgba<u8>, Vec<u8>>
-                let dynamic_image = image::DynamicImage::ImageRgba8(image);
-                let mut buffer = Vec::new();
-                if let Ok(_) = dynamic_image.write_to(&mut Cursor::new(&mut buffer), ImageFormat::Png) {
-                    images.push(buffer);
-                }
-            },
-            Err(e) => println!("Failed to capture screen: {}", e),
-        }
-    }
-    images
-}
-
-// System Stats
+// System Stats Structure
 pub struct SystemStats {
     pub cpu_usage: f32,
     pub memory_used: u64,
@@ -85,4 +69,56 @@ pub fn get_system_stats() -> SystemStats {
         memory_used: sys.used_memory(),
         memory_total: sys.total_memory(),
     }
+}
+
+// FLATBUFFERS: Zero-copy friendly serialization for high frequency monitoring
+pub fn get_monitoring_packet_fbs() -> Vec<u8> {
+    let mut builder = FlatBufferBuilder::new();
+    
+    // 1. Get Input Stats
+    let input_stats = get_and_reset_input_stats();
+    let input_offset = FbsInputStats::create(&mut builder, &InputStatsArgs {
+        mouse_clicks: input_stats.mouse_clicks,
+        key_presses: input_stats.key_presses,
+        mouse_moves: input_stats.mouse_moves,
+    });
+
+    // 2. Get System Stats
+    let sys_stats = get_system_stats();
+    let sys_offset = FbsSystemStats::create(&mut builder, &SystemStatsArgs {
+        cpu_usage: sys_stats.cpu_usage,
+        memory_used: sys_stats.memory_used,
+        memory_total: sys_stats.memory_total,
+    });
+
+    // 3. Create Packet
+    let timestamp = chrono::Utc::now().timestamp_millis();
+    let packet = MonitoringPacket::create(&mut builder, &MonitoringPacketArgs {
+        input: Some(input_offset),
+        system: Some(sys_offset),
+        timestamp,
+    });
+
+    builder.finish(packet, None);
+    builder.finished_data().to_vec()
+}
+
+// Capture Screenshots (Legacy - prefer Media API for video)
+pub fn capture_screens() -> Vec<Vec<u8>> {
+    let screens = Screen::all().unwrap_or_default();
+    let mut images = Vec::new();
+
+    for screen in screens {
+        match screen.capture() {
+            Ok(image) => {
+                let dynamic_image = image::DynamicImage::ImageRgba8(image);
+                let mut buffer = Vec::new();
+                if let Ok(_) = dynamic_image.write_to(&mut Cursor::new(&mut buffer), ImageFormat::Png) {
+                    images.push(buffer);
+                }
+            },
+            Err(e) => println!("Failed to capture screen: {}", e),
+        }
+    }
+    images
 }

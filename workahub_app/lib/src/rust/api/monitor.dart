@@ -16,11 +16,14 @@ Future<void> startInputMonitoring() =>
 Future<InputStats> getAndResetInputStats() =>
     RustLib.instance.api.crateApiMonitorGetAndResetInputStats();
 
-Future<List<Uint8List>> captureScreens() =>
-    RustLib.instance.api.crateApiMonitorCaptureScreens();
-
 Future<SystemStats> getSystemStats() =>
     RustLib.instance.api.crateApiMonitorGetSystemStats();
+
+Future<Uint8List> getMonitoringPacketFbs() =>
+    RustLib.instance.api.crateApiMonitorGetMonitoringPacketFbs();
+
+Future<List<Uint8List>> captureScreens() =>
+    RustLib.instance.api.crateApiMonitorCaptureScreens();
 
 class InputStats {
   final BigInt mouseClicks;
