@@ -4,11 +4,18 @@ import 'package:workahub_app/src/rust/api/db.dart';
 import 'package:workahub_app/src/rust/api/media.dart';
 import 'package:workahub_app/src/screens/login_screen.dart';
 import 'package:workahub_app/src/screens/dashboard_screen.dart';
+import 'package:workahub_app/src/utils/tray_manager.dart';
+import 'package:window_manager/window_manager.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await windowManager.ensureInitialized();
   await RustLib.init();
   
+  // Initialize System Tray
+  final trayManager = TrayManager();
+  await trayManager.initSystemTray();
+
   // Initialize DB
   try {
     final dbMsg = await initDb();
@@ -39,7 +46,6 @@ class MyApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
       ),
-      // Temporarily set Dashboard as home for testing
       home: const DashboardScreen(),
     );
   }
